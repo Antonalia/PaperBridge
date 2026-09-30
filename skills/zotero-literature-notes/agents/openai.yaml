@@ -1,0 +1,4 @@
+interface:
+  display_name: "文献笔记 · Zotero → Obsidian"
+  short_description: "原文精读、补充 Zotero 标注，按 Bridge 配置导入并展开论文详解"
+  default_prompt: "使用 $zotero-literature-notes 解读这篇论文；缺少标注时先在 Zotero 标注，再通过 Bridge 导入 Obsidian，并展开模型结构、相关文献、实验与结论。"

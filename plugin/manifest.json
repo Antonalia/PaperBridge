@@ -1,0 +1,22 @@
+{
+  "manifest_version": 2,
+  "name": "文献桥 · PaperBridge",
+  "version": "1.0.0",
+  "description": "连接 Zotero、Codex 与 Obsidian：论文精读、原生标注与文献笔记。",
+  "author": "Local personal project",
+  "applications": {
+    "zotero": {
+      "id": "codex-pdf-bridge@local.personal",
+      "update_url": "https://127.0.0.1:23119/codex-zotero/updates.json",
+      "strict_min_version": "7.0",
+      "strict_max_version": "11.*"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  }
+}

@@ -1,0 +1,514 @@
+[
+  {
+    "name": "zotero_prepare_obsidian_import",
+    "description": "Prepare an Obsidian Markdown import of native Zotero annotations, comments and cached images using the vault, top folder, collection hierarchy and per-kind link settings in Zotero. Does not write files. Select collection_id if the paper has multiple collections, or target_note for an existing vault-relative Markdown file. Omit annotation_ids to import all annotations. Older image annotations may need content_kinds overrides to distinguish charts. Returns a reviewable path and plan ID; requires plugin 0.1.10+. Exports each annotation as a Page callout with a continuous source paragraph and a separate comment paragraph. PDF line-wrap hyphens are resolved conservatively against the paper vocabulary; Zotero source annotations remain unchanged.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        },
+        "collection_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional vault-relative .md path; imported blocks update while manual content remains."
+        },
+        "annotation_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "include_comments": {
+          "type": "boolean"
+        },
+        "omit_comments_for": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "content_kinds": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "properties": {
+              "annotation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "chart"
+                ]
+              }
+            },
+            "required": [
+              "annotation_id",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "attachment_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_apply_obsidian_import",
+    "description": "Apply a prepared Obsidian import after the user authorizes the export. Writes only the configured vault, checks for changed notes/settings, backs up existing notes, preserves manual content and avoids duplicate annotation blocks. Reapplying the same plan is idempotent. Does not edit Zotero annotations.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "plan_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_render_pdf_page",
+    "description": "Render a canonical unrotated PDF page for visual inspection before selecting an image region. Returns PNG and an opaque render ID; crop coordinates are in this image pixel space.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "attachment_id",
+        "page"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_prepare_image_annotation",
+    "description": "After visually inspecting render_pdf_page, prepare a native image annotation from a pixel rectangle [left,top,right,bottom] on that render. Returns cropped PNG and a plan ID for apply_annotations. Omit color unless the user explicitly chooses one. Select region_kind to use the configured image or chart color. Native images require plugin 0.1.4+; custom color defaults require 0.1.5+.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "render_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region_kind": {
+          "type": "string",
+          "enum": [
+            "image",
+            "figure",
+            "table",
+            "chart"
+          ],
+          "description": "image for photos or general images; figure, table and chart use the configured chart color."
+        },
+        "crop_pixels": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "yellow",
+            "red",
+            "green",
+            "blue",
+            "purple",
+            "magenta",
+            "orange",
+            "gray"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      },
+      "required": [
+        "render_id",
+        "crop_pixels"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_status",
+    "description": "Check the local Zotero bridge and whether native annotation writes are enabled. Requires Zotero running with the small Codex PDF Bridge plugin.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_get_obsidian_link",
+    "description": "Get a verified Zotero annotation deep link using the master and per-kind Obsidian link settings. Call before adding each link to an Obsidian export; omit the link when enabled=false and url=null. Use annotation for text highlights/notes, image for photos, and chart for figures, charts and tables. Requires plugin 0.1.10+. Does not write Obsidian files.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        },
+        "annotation_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Annotation ID returned by list_annotations or apply_annotations (u-XXXXXXXX)."
+        },
+        "content_kind": {
+          "type": "string",
+          "enum": [
+            "annotation",
+            "image",
+            "chart"
+          ]
+        }
+      },
+      "required": [
+        "attachment_id",
+        "annotation_id",
+        "content_kind"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_search",
+    "description": "Search titles, creators and years in the local personal Zotero library. Returns PDF attachment IDs. Empty query browses the library.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_selected_items",
+    "description": "Read the currently selected items and their PDF attachment IDs from the Zotero library window.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_read_pdf",
+    "description": "Read exact text passages and opaque annotation locator IDs from a local PDF. Page numbers are physical and one-based. Returned locators are the only accepted annotation anchors. Scanned pages without text require OCR first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        },
+        "start_page": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "end_page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Read at most 20 physical pages per call; defaults to start_page + 9."
+        }
+      },
+      "required": [
+        "attachment_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_find_pdf_text",
+    "description": "Locate exact, case-sensitive source text in a PDF page range. Whitespace is normalized. Returns a separate locator per occurrence; choose the intended occurrence explicitly.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        },
+        "start_page": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "end_page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Read at most 20 physical pages per call; defaults to start_page + 9."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        }
+      },
+      "required": [
+        "attachment_id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_list_annotations",
+    "description": "Read existing native PDF annotations before proposing additions.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        }
+      },
+      "required": [
+        "attachment_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_prepare_annotations",
+    "description": "Prepare a reviewable batch of native highlights, underlines, or sticky notes without writing to Zotero. Use only locator IDs returned by read_pdf/find_pdf_text. Each annotation can combine consecutive locators on one page. Highlight text comes from the source, not a paraphrase. Set emphasis=important for key highlights. Omit color unless the user explicitly chooses one, so plugin color preferences are applied. Returns a plan ID and previews with resolved colors.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345."
+        },
+        "annotations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "highlight",
+                  "underline",
+                  "note"
+                ]
+              },
+              "locator_ids": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "emphasis": {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "important"
+                ],
+                "description": "Use important for user-requested key points; otherwise normal. Omit color to use Zotero plugin preferences."
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "yellow",
+                  "red",
+                  "green",
+                  "blue",
+                  "purple",
+                  "magenta",
+                  "orange",
+                  "gray"
+                ]
+              },
+              "comment": {
+                "type": "string",
+                "maxLength": 20000
+              },
+              "tags": {
+                "type": "array",
+                "maxItems": 50,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            },
+            "required": [
+              "type",
+              "locator_ids"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "attachment_id",
+        "annotations"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "zotero_apply_annotations",
+    "description": "Write a prepared batch as editable Zotero-native annotations. Call after the user has authorized the proposed annotation batch. Enable annotation writes in the Zotero plugin settings. Reapplying the same plan is idempotent. Only annotations are added; PDFs and existing annotations are not altered.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "plan_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  }
+]

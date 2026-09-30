@@ -1,0 +1,10 @@
+.build/
+.venv/
+dist/
+__pycache__/
+*.py[cod]
+*.partial
+
+# Built executable and dependency source archives are distributed as release assets.
+plugin/runtime/*.exe
+third_party/sources/

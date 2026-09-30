@@ -1,0 +1,133 @@
+<!-- Zotero loads this file as an XML fragment, not a standalone document. -->
+<vbox id="codex-bridge-pane" class="main-section" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml">
+  <html:p>本机 Zotero 与 Codex 的连接。当前仅开放个人文献库。</html:p>
+  <checkbox id="codex-bridge-enabled" preference="extensions.zotero.codexPdfBridge.enabled" label="启用本地连接 / Enable local bridge"/>
+  <checkbox id="codex-bridge-write" preference="extensions.zotero.codexPdfBridge.writeEnabled" label="允许创建原生高亮、下划线和批注 / Enable annotation writes"/>
+  <html:details id="codex-bridge-ruleSection" class="codex-rules-section">
+  <html:summary class="codex-rules-title">标注规则 <html:span id="codex-bridge-ruleCount" class="codex-rules-count"/></html:summary>
+  <html:p class="codex-rules-help">点击规则展开编辑，修改后保存。</html:p>
+  <html:style>
+    .codex-rules-section { margin: 12px 0; max-width: 760px; }
+    .codex-rules-title { cursor: pointer; font-size: 1.2em; font-weight: 600; padding: 3px 0; }
+    .codex-rules-count { font-size: 12px; font-weight: 400; opacity: .65; margin-left: 6px; }
+    .codex-rules-help { margin: 6px 0 8px; font-size: 12px; opacity: .75; }
+    .codex-rule-card { margin: 0 0 6px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 5px; background: color-mix(in srgb, currentColor 2%, transparent); }
+    .codex-rule-header { display: flex; align-items: center; gap: 8px; padding: 7px 9px; cursor: pointer; list-style: none; }
+    .codex-rule-header::before { content: '›'; flex: 0 0 8px; transform: rotate(0deg); }
+    .codex-rule-card[open] > .codex-rule-header::before { transform: rotate(90deg); }
+    .codex-rule-label { font-weight: 600; font-size: 12px; flex: 0 0 auto; }
+    .codex-rule-preview { font-size: 12px; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .codex-rule-controls { display: flex; justify-content: flex-end; padding: 4px 8px 6px; }
+    .codex-rule-remove { padding: 2px 8px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 4px; color: inherit; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+    .codex-rule-remove:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+    .codex-rule-input { display: block; width: calc(100% - 16px); margin: 0 8px; min-height: 3.2em; max-height: 220px; box-sizing: border-box; padding: 6px 8px; border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: 4px; background: Field; color: FieldText; font: inherit; font-size: 13px; line-height: 1.55; resize: vertical; overflow-y: auto; }
+    .codex-rule-input:focus { outline: 2px solid Highlight; outline-offset: 1px; }
+    .codex-rules-empty { padding: 8px; margin-bottom: 6px; border: 1px dashed color-mix(in srgb, currentColor 24%, transparent); border-radius: 5px; line-height: 1.5; font-size: 12px; }
+  </html:style>
+  <html:div id="codex-bridge-ruleCards" role="group" aria-label="标注规则列表"/>
+  <hbox style="margin-top: 2px; margin-bottom: 4px;">
+    <button id="codex-bridge-addRule" label="＋ 添加规则"/>
+  </hbox>
+  <hbox style="margin-top: 4px;">
+    <button id="codex-bridge-saveRules" label="保存规则"/>
+    <button id="codex-bridge-resetRules" label="恢复默认"/>
+    <button id="codex-bridge-clearRules" label="清空"/>
+  </hbox>
+  <html:p id="codex-bridge-rules-status" class="codex-rules-help" aria-live="polite">编辑、添加或删除后点击“保存规则”生效。</html:p>
+  <html:p class="codex-rules-help">规则以自然语言指导后续标注；当前任务要求优先，已有标注不自动改变。</html:p>
+  </html:details>
+  <html:h2>标注颜色</html:h2>
+  <html:p>为本插件新建的标注选择默认颜色。每条标注也可以指定自己的颜色。</html:p>
+  <hbox align="center" style="margin-bottom: 8px;">
+    <label control="codex-bridge-defaultColor" value="默认标注颜色" style="min-width: 140px;"/>
+    <menulist id="codex-bridge-defaultColor" preference="extensions.zotero.codexPdfBridge.defaultColor" style="min-width: 160px;">
+      <menupopup>
+        <menuitem label="黄色" value="yellow" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ffd400%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="红色" value="red" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ff6666%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="绿色" value="green" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%235fb236%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="蓝色" value="blue" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%232ea8e5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="紫色" value="purple" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23a28ae5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="洋红色" value="magenta" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23e56eee%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="橙色" value="orange" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23f19837%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="灰色" value="gray" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23aaaaaa%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+      </menupopup>
+    </menulist>
+    <html:span id="codex-bridge-defaultColor-swatch" role="img" style="display: inline-block; width: 22px; height: 22px; margin-left: 12px; border: 1px solid #666; border-radius: 3px; background-color: #ffd400;"/>
+  </hbox>
+  <hbox align="center" style="margin-bottom: 8px;">
+    <label control="codex-bridge-importantColor" value="重点标注颜色" style="min-width: 140px;"/>
+    <menulist id="codex-bridge-importantColor" preference="extensions.zotero.codexPdfBridge.importantColor" style="min-width: 160px;">
+      <menupopup>
+        <menuitem label="黄色" value="yellow" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ffd400%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="红色" value="red" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ff6666%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="绿色" value="green" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%235fb236%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="蓝色" value="blue" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%232ea8e5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="紫色" value="purple" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23a28ae5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="洋红色" value="magenta" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23e56eee%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="橙色" value="orange" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23f19837%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="灰色" value="gray" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23aaaaaa%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+      </menupopup>
+    </menulist>
+    <html:span id="codex-bridge-importantColor-swatch" role="img" style="display: inline-block; width: 22px; height: 22px; margin-left: 12px; border: 1px solid #666; border-radius: 3px; background-color: #ff6666;"/>
+  </hbox>
+  <hbox align="center" style="margin-bottom: 8px;">
+    <label control="codex-bridge-imageColor" value="图片框选颜色" style="min-width: 140px;"/>
+    <menulist id="codex-bridge-imageColor" preference="extensions.zotero.codexPdfBridge.imageColor" style="min-width: 160px;">
+      <menupopup>
+        <menuitem label="黄色" value="yellow" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ffd400%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="红色" value="red" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ff6666%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="绿色" value="green" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%235fb236%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="蓝色" value="blue" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%232ea8e5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="紫色" value="purple" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23a28ae5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="洋红色" value="magenta" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23e56eee%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="橙色" value="orange" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23f19837%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="灰色" value="gray" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23aaaaaa%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+      </menupopup>
+    </menulist>
+    <html:span id="codex-bridge-imageColor-swatch" role="img" style="display: inline-block; width: 22px; height: 22px; margin-left: 12px; border: 1px solid #666; border-radius: 3px; background-color: #a28ae5;"/>
+  </hbox>
+  <hbox align="center" style="margin-bottom: 8px;">
+    <label control="codex-bridge-chartColor" value="图表框选颜色" style="min-width: 140px;"/>
+    <menulist id="codex-bridge-chartColor" preference="extensions.zotero.codexPdfBridge.chartColor" style="min-width: 160px;">
+      <menupopup>
+        <menuitem label="黄色" value="yellow" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ffd400%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="红色" value="red" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23ff6666%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="绿色" value="green" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%235fb236%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="蓝色" value="blue" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%232ea8e5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="紫色" value="purple" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23a28ae5%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="洋红色" value="magenta" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23e56eee%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="橙色" value="orange" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23f19837%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+        <menuitem label="灰色" value="gray" class="menuitem-iconic" image="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2214%22%20height%3D%2214%22%20rx%3D%222%22%20fill%3D%22%23aaaaaa%22%20stroke%3D%22%23666%22%2F%3E%3C%2Fsvg%3E"/>
+      </menupopup>
+    </menulist>
+    <html:span id="codex-bridge-chartColor-swatch" role="img" style="display: inline-block; width: 22px; height: 22px; margin-left: 12px; border: 1px solid #666; border-radius: 3px; background-color: #2ea8e5;"/>
+  </hbox>
+  <html:p>图示、图表和表格使用图表框选颜色；照片等图片使用图片框选颜色。颜色在准备标注方案时确定，更改设置后请重新准备方案。</html:p>
+  <html:h2>Obsidian 笔记位置</html:h2>
+  <html:label for="codex-bridge-obsidianVaultPath">Obsidian 仓库路径</html:label>
+  <html:input id="codex-bridge-obsidianVaultPath" type="text" preference="extensions.zotero.codexPdfBridge.obsidianVaultPath" placeholder="例如 D:\Obsidian\我的笔记" style="width: 100%; box-sizing: border-box;"/>
+  <html:label for="codex-bridge-obsidianTopFolder" style="margin-top: 8px;">新建笔记的顶层目录（相对于仓库，可留空）</html:label>
+  <html:input id="codex-bridge-obsidianTopFolder" type="text" preference="extensions.zotero.codexPdfBridge.obsidianTopFolder" placeholder="例如 Zotero 或 文献/阅读笔记" style="width: 100%; box-sizing: border-box;"/>
+  <hbox align="center" style="margin-top: 8px;">
+    <label control="codex-bridge-obsidianFolderLayout" value="子目录结构"/>
+    <menulist id="codex-bridge-obsidianFolderLayout" preference="extensions.zotero.codexPdfBridge.obsidianFolderLayout">
+      <menupopup>
+        <menuitem label="按照 Zotero 分类层级" value="collections"/>
+        <menuitem label="全部放在顶层目录" value="flat"/>
+      </menupopup>
+    </menulist>
+  </hbox>
+  <html:p>导入时在所选顶层目录下建立 Zotero 的分类与子分类文件夹。无分类的文献放在顶层；多个分类时可指定分类，或使用 Zotero 当前选中的分类。</html:p>
+  <html:h2>Obsidian 跳转链接</html:h2>
+  <checkbox id="codex-bridge-obsidianLinksEnabled" preference="extensions.zotero.codexPdfBridge.obsidianLinksEnabled" label="导入 Obsidian 时附带 Zotero 跳转链接（总开关）"/>
+  <vbox style="margin-left: 24px;">
+    <checkbox id="codex-bridge-obsidianAnnotationLinks" preference="extensions.zotero.codexPdfBridge.obsidianAnnotationLinks" label="文字标注与注释附带跳转链接"/>
+    <checkbox id="codex-bridge-obsidianImageLinks" preference="extensions.zotero.codexPdfBridge.obsidianImageLinks" label="图片附带跳转链接"/>
+    <checkbox id="codex-bridge-obsidianChartLinks" preference="extensions.zotero.codexPdfBridge.obsidianChartLinks" label="图表与表格附带跳转链接"/>
+  </vbox>
+  <html:p>总开关关闭时全部省略链接，并保留三个子开关的选择。设置用于后续通过 Codex 导入的内容，不改动已有笔记，也不控制其他导入插件。</html:p>
+  <html:h2>连接 Codex</html:h2>
+  <html:p>点击下方按钮完成本机 Codex 连接配置，完成后重启 Codex 即可使用。</html:p>
+  <button id="codex-bridge-configure" label="配置 Codex / Configure Codex"/>
+  <html:p id="codex-bridge-setup-status">首次配置或升级后点击“配置 Codex”，完成后重启 Codex。</html:p>
+</vbox>

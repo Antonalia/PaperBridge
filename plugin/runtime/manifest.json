@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "platform": "windows-x64",
+  "filename": "codex-zotero-mcp.exe",
+  "size_bytes": 28231545,
+  "sha256": "2224b0b13cc9e33f1c7f4917ee8eb9614cb7ff9b70210484d45b25725e40c77d",
+  "python_version": "3.12.14",
+  "pymupdf_version": "1.28.2",
+  "mupdf_version": "1.28.2",
+  "dependencies": {
+    "PyMuPDF": "1.28.2",
+    "PyInstaller": "6.22.3",
+    "tomlkit": "0.15.1",
+    "altgraph": "0.17.5",
+    "packaging": "26.3",
+    "pefile": "2024.8.26",
+    "pyinstaller-hooks-contrib": "2026.7",
+    "pywin32-ctypes": "0.2.3",
+    "setuptools": "84.0.0"
+  },
+  "msvc_runtime": "system prerequisite; not bundled"
+}

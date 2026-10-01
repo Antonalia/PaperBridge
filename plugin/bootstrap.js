@@ -17,6 +17,7 @@ async function startup(data) {
     Services.scriptloader.loadSubScript(root + "content/installer.js", bridgeContext);
     bridgeContext.CodexBridgeInstaller.initialize(root);
     Zotero.CodexPDFBridgeInstaller = bridgeContext.CodexBridgeInstaller;
+    Services.scriptloader.loadSubScript(root + "content/metadata.js", bridgeContext);
     Services.scriptloader.loadSubScript(root + "content/bridge.js", bridgeContext);
     await bridgeContext.CodexZoteroBridge.start(root);
 }

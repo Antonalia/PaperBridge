@@ -12,7 +12,8 @@ clean_env=dict(os.environ)
 clean_env['PATH']=os.pathsep.join([str(Path(os.environ['SystemRoot'])/'System32'),os.environ['SystemRoot']])
 manifest=json.loads((root/'plugin/manifest.json').read_text(encoding='utf-8'))
 runtime=json.loads((root/'plugin/runtime/manifest.json').read_text(encoding='utf-8'))
-assert manifest['version']==runtime['version']=='1.0.0'
+version=manifest['version']
+assert version==runtime['version']==json.loads((root/'package.json').read_text(encoding='utf-8'))['version']
 assert hashlib.sha256(executable.read_bytes()).hexdigest()==runtime['sha256']
 ET.parse(root/'plugin/content/preferences.xhtml')
 for path in manifest['icons'].values():assert (root/'plugin'/path).is_file()
@@ -44,7 +45,7 @@ with tempfile.TemporaryDirectory() as folder:
     result=subprocess.run([str(executable),'--config',str(temp/'no-config.json')],input=('\n'.join(json.dumps(x) for x in requests)+'\n').encode(),capture_output=True,timeout=45,env=clean_env)
     assert result.returncode==0
     responses=[json.loads(line) for line in result.stdout.splitlines()]
-    assert responses[0]['result']['serverInfo']['version']=='1.0.0'
+    assert responses[0]['result']['serverInfo']['version']==version
     tool_names={x['name'] for x in responses[2]['result']['tools']}
     assert {'zotero_prepare_annotations','zotero_prepare_obsidian_import','zotero_apply_obsidian_import'}<=tool_names
     vault=temp/'vault';(vault/'.obsidian').mkdir(parents=True)
@@ -57,4 +58,4 @@ with tempfile.TemporaryDirectory() as folder:
     assert apply(plan,snapshot)['reused']
     for entry in json.loads((root/'third_party/source-manifest.json').read_text(encoding='utf-8')):
         assert hashlib.sha256((root/'third_party/sources'/entry['filename']).read_bytes()).hexdigest()==entry['sha256']
-print(json.dumps(dict(version='1.0.0',frozen_pdf_extraction=True,complete_sentence_boundary=True,pdf_render=True,pdf_unchanged=True,frozen_mcp_protocol=True,collection_hierarchy=True,natural_quote=True,idempotent_import=True,geometry_union=True,dependency_source_hashes=True)))
+print(json.dumps(dict(version=version,frozen_pdf_extraction=True,complete_sentence_boundary=True,pdf_render=True,pdf_unchanged=True,frozen_mcp_protocol=True,collection_hierarchy=True,natural_quote=True,idempotent_import=True,geometry_union=True,dependency_source_hashes=True)))

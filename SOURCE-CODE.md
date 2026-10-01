@@ -1,6 +1,6 @@
 # 取得完整对应源码
 
-源码文件：**paperbridge-1.0.0-source.zip**。
+源码文件：**paperbridge-1.0.1-source.zip**。
 公开分发 XPI 时在同一下载页面同时提供此源码 ZIP 和 SHA256SUMS.txt，免费且持续可取得。
 只有 XPI、只有许可证或只给上游首页，不能替代这个源码分发安排。
 

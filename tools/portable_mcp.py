@@ -19,7 +19,7 @@ from urllib.request import Request, ProxyHandler, HTTPRedirectHandler, build_ope
 
 from annotation_rules import rules_from_status, rules_instructions, tools_with_rules
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 ASSETS = Path(__file__).resolve().parent
 HOME = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else ASSETS.parent
 DEFAULTS = dict(annotation='yellow', important='red', image='purple', chart='blue')

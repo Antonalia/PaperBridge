@@ -14,7 +14,11 @@ var CodexBridgeInstaller = {
     },
     async deploy() {
         if (!Zotero.isWin) throw new Error("当前独立程序只支持 Windows x64。");
-        const manifest = JSON.parse(await Zotero.File.getContentsFromURLAsync(this.root + "runtime/manifest.json"));
+        // Packaged jar: resources have no username/password URI fields. Zotero
+        // 10's HTTP helper assumes those fields, so use its local-resource reader.
+        const resource = this.root + "runtime/manifest.json";
+        const manifest = JSON.parse(Zotero.File.getResourceAsync
+            ? await Zotero.File.getResourceAsync(resource) : Zotero.File.getResource(resource));
         if (manifest.platform !== "windows-x64" || !/^\d+\.\d+\.\d+$/.test(manifest.version)
             || manifest.filename !== "codex-zotero-mcp.exe" || !/^[a-f0-9]{64}$/.test(manifest.sha256)) throw new Error("内置程序清单无效，请重新安装插件。");
         const directory = PathUtils.join(Zotero.Profile.dir, "codex-pdf-bridge", manifest.version);

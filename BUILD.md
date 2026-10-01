@@ -1,13 +1,14 @@
-# 构建 1.0.0
+# 构建 1.0.1
 
-环境：Windows x64、CPython 3.12.14，PyMuPDF/MuPDF 1.28.2。插件与 MCP 均为 1.0.0。
-解压源码 ZIP，在 paperbridge-1.0.0 目录打开 PowerShell：
+环境：Windows x64、CPython 3.12.14，PyMuPDF/MuPDF 1.28.2。插件与 MCP 均为 1.0.1。
+解压源码 ZIP，在 paperbridge-1.0.1 目录打开 PowerShell：
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe --version
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-build.txt
 .\.venv\Scripts\python.exe tools/build_portable.py
+node tests/test_relations.mjs
 .\.venv\Scripts\python.exe tests/test_release.py
 .\.venv\Scripts\python.exe tools/build.py
 ```
@@ -23,6 +24,7 @@ MuPDF 源码包括 thirdparty 目录；从依赖源码重建 PyMuPDF，需阅读
 正常构建本插件使用固定官方 wheel；该 wheel 不代替附带的完整依赖源码。
 CPython 源树 PCbuild/ 包含 Windows 构建及外部依赖获取脚本。
 Node MCP 入口 server.mjs 只使用 Node.js 内置模块，不需 npm 依赖。
+标注迁移与失败重试测试使用 Node.js 20 或更新版本；测试使用模拟库，不接触个人 Zotero。
 
 ## Python 的外部组件与系统运行库
 

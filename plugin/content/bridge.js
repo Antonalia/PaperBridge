@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 PaperBridge contributors.
-/* global Zotero, Services, IOUtils, Components */
+/* global Zotero, Services, IOUtils, Components, PaperBridgeMetadata */
 var CodexZoteroBridge = {
     prefix: "extensions.zotero.codexPdfBridge.",
     path: "/codex-zotero/v1",
@@ -49,7 +49,7 @@ var CodexZoteroBridge = {
             await annotation.loadDataType("relations");
             const image = annotation.annotationType === "image";
             const relations = annotation.getRelationsByPredicate("dc:relation");
-            const kind = image ? (relations.includes("urn:codex-zotero:content-kind:chart") ? "chart" : "image") : "annotation";
+            const kind = image ? PaperBridgeMetadata.kind(annotation, relations) : "annotation";
             const cache = image ? Zotero.Annotations.getCacheImagePath(annotation) : null;
             annotations.push({ annotation_id: this.ref(annotation), type: annotation.annotationType, content_kind: kind, text: annotation.annotationText || "", comment: annotation.annotationComment || "", page_label: annotation.annotationPageLabel || "", position: JSON.parse(annotation.annotationPosition), sort_index: annotation.annotationSortIndex || "", color: annotation.annotationColor, image_path: cache && await IOUtils.exists(cache) ? cache : null });
         }
@@ -98,6 +98,14 @@ var CodexZoteroBridge = {
             const generator = Components.classes["@mozilla.org/security/random-generator;1"].getService(Components.interfaces.nsIRandomGenerator);
             this.set("token", Array.from(generator.generateRandomBytes(32), byte => byte.toString(16).padStart(2, "0")).join(""));
         }
+        this.metadataError = null;
+        try {
+            await PaperBridgeMetadata.initialize(this);
+            this.relationMigration = await PaperBridgeMetadata.migrate();
+        } catch (error) {
+            this.metadataError = error.message || String(error);
+            Zotero.logError(error);
+        }
         this.active = true;
         const owner = this;
         this.Endpoint = function () {};
@@ -121,6 +129,7 @@ var CodexZoteroBridge = {
     assertEnabled(write = false) {
         if (!this.active || !this.get("enabled")) throw new Error("Bridge is disabled. Enable it in Zotero Settings > 文献桥 · PaperBridge.");
         if (write && !this.get("writeEnabled")) throw new Error("Write tools are disabled. Enable native annotation writes in Zotero Settings > 文献桥 · PaperBridge.");
+        if (write && this.metadataError) throw new Error("PaperBridge metadata repair needs attention: " + this.metadataError);
     },
     async handle(request) {
         const respond = (status, value) => [status, "application/json", JSON.stringify(value)];
@@ -172,7 +181,7 @@ var CodexZoteroBridge = {
     },
     async dispatch(data) {
         if (data.action === "obsidian_snapshot") return this.obsidianSnapshot(data.attachment_id);
-        if (data.action === "status") return { version: "1.0.0", ...this.annotationRules(), annotation_updates: true, annotation_geometry: "compact-font-disjoint-v1", zotero_version: Zotero.version, library: "personal", write_enabled: !!this.get("writeEnabled"), account_required: false, default_colors: this.colorDefaults(), color_palette: this.colors, obsidian_links: this.obsidianLinks() };
+        if (data.action === "status") return { version: "1.0.1", ...this.annotationRules(), annotation_updates: true, annotation_geometry: "compact-font-disjoint-v1", zotero_version: Zotero.version, library: "personal", write_enabled: !!this.get("writeEnabled") && !this.metadataError, metadata_error: this.metadataError, relation_migration: this.relationMigration || null, account_required: false, default_colors: this.colorDefaults(), color_palette: this.colors, obsidian_links: this.obsidianLinks() };
         if (data.action === "obsidian_link") {
             const { item } = await this.attachment(data.attachment_id);
             if (typeof data.annotation_id !== "string" || !/^u-[A-Z0-9]{8}$/.test(data.annotation_id)) throw new Error("Use an annotation ID returned by this bridge");
@@ -332,34 +341,38 @@ var CodexZoteroBridge = {
         if (!Array.isArray(data.annotations) || !data.annotations.length || data.annotations.length > 50) throw new Error("Annotation batch must have 1–50 items");
         const annotations = data.annotations.map(value => this.validateAnnotation(value, pageCount));
         if (!/^[a-f0-9]{64}$/.test(data.file_sha256 || "") || await this.digest(filePath) !== data.file_sha256) throw new Error("PDF changed since it was read. Read and prepare annotations again.");
-        let receipts;
-        try { receipts = JSON.parse(this.get("receipts") || "{}"); } catch (_) { throw new Error("Receipt storage is invalid"); }
-        if (!receipts || typeof receipts !== "object" || Array.isArray(receipts)) throw new Error("Receipt storage is invalid");
         const payloadHash = this.digestText(JSON.stringify({ attachment: attachment.key, hash: data.file_sha256, annotations }));
-        const cached = receipts[data.request_id];
-        if (cached) {
-            if (cached.payload !== payloadHash) throw new Error("Request ID was already used for different annotations");
-            return { ...cached.result, already_applied: true };
-        }
-        await attachment.loadDataType("childItems");
-        const existing = attachment.getAnnotations();
+        const record = await PaperBridgeMetadata.reserve(data.request_id, payloadHash, attachment, annotations);
         const result = { attachment_id: this.ref(attachment), created: [], already_applied: false };
+        let reused = 0;
         await Zotero.DB.executeTransaction(async () => {
+            const existing = [];
+            for (let index = 0; index < annotations.length; index++) {
+                const entry = record.entries[index];
+                const annotation = await Zotero.Items.getByLibraryAndKeyAsync(attachment.libraryID, entry.key);
+                if (!annotation && entry.committed) throw new Error("Previously created annotation no longer exists; refusing to recreate it on retry");
+                if (annotation) {
+                    if (annotation.deleted || !annotation.isAnnotation() || annotation.parentID !== attachment.id) throw new Error("Previously created annotation was deleted or moved; review it before preparing a new request");
+                    await annotation.loadDataType("annotation");
+                    if (annotation.annotationType !== annotations[index].type) throw new Error("Previously created annotation has a different type");
+                }
+                existing.push(annotation);
+            }
+            const present = existing.filter(Boolean).length;
+            if (present && present !== annotations.length) throw new Error("Only part of a previously created batch exists; review its annotations before preparing a new request");
             for (let index = 0; index < annotations.length; index++) {
                 this.assertEnabled(true);
                 const input = annotations[index];
-                const receiptPrefix = "urn:codex-pdf-bridge:" + data.request_id + ":" + index + ":";
-                const receiptURI = receiptPrefix + payloadHash;
-                let annotation;
-                for (const candidate of existing) {
-                    await candidate.loadDataType("relations");
-                    const previous = candidate.getRelationsByPredicate("dc:relation").find(uri => uri.startsWith(receiptPrefix));
-                    if (previous && previous !== receiptURI) throw new Error("Request ID was already used for different annotations");
-                    if (previous === receiptURI) { annotation = candidate; break; }
+                const entry = record.entries[index];
+                let annotation = existing[index];
+                if (annotation) {
+                    reused++;
                 }
                 if (!annotation) {
                     annotation = new Zotero.Item("annotation");
                     annotation.libraryID = attachment.libraryID;
+                    annotation.key = entry.key;
+                    await annotation.loadPrimaryData();
                     annotation.parentID = attachment.id;
                     annotation.annotationType = input.type;
                     if (["highlight", "underline"].includes(input.type)) annotation.annotationText = input.text;
@@ -370,15 +383,15 @@ var CodexZoteroBridge = {
                     annotation.annotationPosition = JSON.stringify({ pageIndex: input.page_index, rects: input.rects });
                     annotation.annotationAuthorName = "Codex";
                     for (const tag of input.tags) annotation.addTag(tag);
-                    annotation.addRelation("dc:relation", receiptURI);
-                    if (input.type === "image") annotation.addRelation("dc:relation", "urn:codex-zotero:content-kind:" + (input.color_role === "chart" ? "chart" : "image"));
                     await annotation.save();
                 }
                 result.created.push({ annotation_id: this.ref(annotation), type: input.type, page: input.page_index + 1, zotero_uri: "zotero://open-pdf/library/items/" + attachment.key + "?annotation=" + annotation.key });
             }
         });
-        // Persist image caches after the database commit. Relations make retries
-        // reuse the annotation if a cache write fails before the receipt saves.
+        result.already_applied = reused === annotations.length;
+        // The prewritten key journal survives a crash here. Retrying an image
+        // cache or journal write reuses those keys, never creating duplicate items.
+        await PaperBridgeMetadata.commit(data.request_id, record.complete);
         for (let index = 0; index < annotations.length; index++) {
             const input = annotations[index];
             if (input.type !== "image") continue;
@@ -386,10 +399,7 @@ var CodexZoteroBridge = {
             const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
             await Zotero.Annotations.saveCacheImage({ libraryID: attachment.libraryID, key: result.created[index].annotation_id.slice(2) }, new Blob([bytes], { type: "image/png" }));
         }
-        receipts[data.request_id] = { payload: payloadHash, result };
-        const keys = Object.keys(receipts);
-        for (const key of keys.slice(0, Math.max(0, keys.length - 100))) delete receipts[key];
-        try { this.set("receipts", JSON.stringify(receipts)); } catch (error) { Zotero.logError(error); }
+        await PaperBridgeMetadata.commit(data.request_id, true);
         return result;
     }
 };

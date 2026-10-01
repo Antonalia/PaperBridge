@@ -10,5 +10,10 @@ Codex 读取工具返回内容，后续模型服务的数据处理取决于 Code
 创建标注需启用写入并授权；导入写入用户配置的 Obsidian 仓库，修改已有笔记前备份。
 prepare 临时计划可能包含原文、批注与本地路径，应视为个人数据。
 
+从 1.0.1 起，防重复写入标识、图片/图表类型等插件内部信息存于 Zotero 数据目录下的 paperbridge/ 本地元数据，
+不再借用会上传到 Zotero 云端的条目 relations 字段。启动时会检查旧版遗留的两类内部 URN，先保存迁移备份，
+再清理插件自身的非法关联。备份也保存在 paperbridge/，可能包含个人标注信息，请勿作为发行附件或诊断文件公开上传。
+本地元数据由本插件在设备上保存；Zotero 原生标注仍按用户的 Zotero 同步设置处理。
+
 只分享生成的 XPI、源码 ZIP 和公开说明；不要附带 bridge-config.json、个人论文、笔记、导入计划、
-Codex 配置、Zotero 库或 profile 目录。
+Codex 配置、Zotero 库、profile 目录或 paperbridge/ 本地元数据及迁移备份。

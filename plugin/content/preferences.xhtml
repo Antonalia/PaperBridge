@@ -1,8 +1,16 @@
 <!-- Zotero loads this file as an XML fragment, not a standalone document. -->
 <vbox id="codex-bridge-pane" class="main-section" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml">
+  <hbox align="center" style="margin-bottom: 12px;">
+    <html:h1 style="margin: 0; flex: 1;">PaperBridge</html:h1>
+    <label value="语言" control="codex-bridge-language"/>
+    <menulist id="codex-bridge-language" preference="extensions.zotero.codexPdfBridge.language">
+      <menupopup><menuitem label="简体中文" value="zh"/><menuitem label="English" value="en"/></menupopup>
+    </menulist>
+  </hbox>
   <html:p>本机 Zotero 与 Codex 的连接。当前仅开放个人文献库。</html:p>
-  <checkbox id="codex-bridge-enabled" preference="extensions.zotero.codexPdfBridge.enabled" label="启用本地连接 / Enable local bridge"/>
-  <checkbox id="codex-bridge-write" preference="extensions.zotero.codexPdfBridge.writeEnabled" label="允许创建原生高亮、下划线和批注 / Enable annotation writes"/>
+  <checkbox id="codex-bridge-enabled" preference="extensions.zotero.codexPdfBridge.enabled" label="启用本地连接"/>
+  <checkbox id="codex-bridge-write" preference="extensions.zotero.codexPdfBridge.writeEnabled" label="允许创建原生高亮、下划线、批注和论文标签"/>
+  <html:p>界面语言不会翻译已有规则、目录名、论文标题或用户笔记。</html:p>
   <html:details id="codex-bridge-ruleSection" class="codex-rules-section">
   <html:summary class="codex-rules-title">标注规则 <html:span id="codex-bridge-ruleCount" class="codex-rules-count"/></html:summary>
   <html:p class="codex-rules-help">点击规则展开编辑，修改后保存。</html:p>
@@ -127,7 +135,11 @@
   </vbox>
   <html:p>总开关关闭时全部省略链接，并保留三个子开关的选择。设置用于后续通过 Codex 导入的内容，不改动已有笔记，也不控制其他导入插件。</html:p>
   <html:h2>连接 Codex</html:h2>
+  <html:h2>随附 Skills</html:h2>
+  <html:p>配置 Codex 时自动安装随附的 skills；升级时加入新 skill 并更新未修改的已有 skill。自己编辑过的同名 skill 会保留并提示，不会覆盖。</html:p>
+  <html:p><html:strong>zotero-paper-annotator</html:strong> — <html:span>论文精读、重点批注、公式讲解和论文主题标签。</html:span></html:p>
+  <html:p><html:strong>zotero-literature-notes</html:strong> — <html:span>按 Zotero 分类导入 Obsidian，并展开详细文献笔记。</html:span></html:p>
   <html:p>点击下方按钮完成本机 Codex 连接配置，完成后重启 Codex 即可使用。</html:p>
-  <button id="codex-bridge-configure" label="配置 Codex / Configure Codex"/>
+  <button id="codex-bridge-configure" label="配置 Codex"/>
   <html:p id="codex-bridge-setup-status">首次点击“配置 Codex”；之后会自动升级已启用的连接，升级后请重启 Codex。</html:p>
 </vbox>

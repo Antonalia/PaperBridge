@@ -15,13 +15,14 @@ assert hashlib.sha256((root/'plugin/runtime'/runtime['filename']).read_bytes()).
 for entry in json.loads((root/'third_party/source-manifest.json').read_text(encoding='utf-8')):
     assert hashlib.sha256((root/'third_party/sources'/entry['filename']).read_bytes()).hexdigest()==entry['sha256']
 files=[]
-for folder in ['plugin','tools','tests','skills','third_party','LICENSES']:
+for folder in ['plugin','tools','tests','skills','docs','third_party','LICENSES']:
     for path in sorted((root/folder).rglob('*')):
         if not path.is_file() or '__pycache__' in path.parts or path.suffix in {'.pyc','.partial'}:continue
         if folder=='plugin' and 'runtime' in path.relative_to(root/folder).parts:continue
         files.append(path)
 for name in ['LICENSE','THIRD-PARTY-NOTICES.md','README.md','BUILD.md','SOURCE-CODE.md','PRIVACY.md','CHANGELOG.md','requirements.txt','requirements-build.txt','package.json','server.mjs','setup-codex.ps1']:
     files.append(root/name)
+files.extend(sorted(root.glob('*.en.md')))
 assert all(p.is_file() for p in files)
 xpi=output/f'paperbridge-{version}.xpi'
 with zipfile.ZipFile(xpi,'w',zipfile.ZIP_DEFLATED) as z:
@@ -30,7 +31,9 @@ with zipfile.ZipFile(xpi,'w',zipfile.ZIP_DEFLATED) as z:
     for path in files:
         relative=path.relative_to(root)
         if relative.parts[:2]!=('third_party','sources'):z.write(path,'source/'+relative.as_posix())
-    for name in ['README.md','SOURCE-CODE.md','PRIVACY.md','CHANGELOG.md']:z.write(root/name,name)
+    for name in ['README.md','SOURCE-CODE.md','PRIVACY.md','CHANGELOG.md','README.en.md','SOURCE-CODE.en.md','PRIVACY.en.md','CHANGELOG.en.md','BUILD.en.md']:z.write(root/name,name)
+    for path in sorted((root/'docs').rglob('*')):
+        if path.is_file():z.write(path,path.relative_to(root).as_posix())
 source_zip=output/f'paperbridge-{version}-source.zip'
 with zipfile.ZipFile(source_zip,'w',zipfile.ZIP_DEFLATED) as z:
     for path in files:z.write(path,f'paperbridge-{version}/'+path.relative_to(root).as_posix())

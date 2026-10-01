@@ -9,6 +9,8 @@ async function startup(data) {
     // Zotero owns update checks and the user's Default/On/Off preference.
     const root = data.rootURI || data.resourceURI.spec;
     bridgeContext = { Zotero, Services, Components, IOUtils, PathUtils, ChromeUtils, TextEncoder, atob, Blob };
+    Services.scriptloader.loadSubScript(root + "content/i18n.js", bridgeContext);
+    Zotero.PaperBridgeI18n = bridgeContext.PaperBridgeI18n;
     Services.scriptloader.loadSubScript(root + "content/installer.js", bridgeContext);
     bridgeContext.CodexBridgeInstaller.initialize(root);
     Zotero.CodexPDFBridgeInstaller = bridgeContext.CodexBridgeInstaller;
@@ -20,5 +22,6 @@ async function startup(data) {
 async function shutdown() {
     if (bridgeContext) await bridgeContext.CodexZoteroBridge.stop();
     if (bridgeContext && Zotero.CodexPDFBridgeInstaller === bridgeContext.CodexBridgeInstaller) delete Zotero.CodexPDFBridgeInstaller;
+    if (bridgeContext && Zotero.PaperBridgeI18n === bridgeContext.PaperBridgeI18n) delete Zotero.PaperBridgeI18n;
     bridgeContext = undefined;
 }

@@ -1,3 +1,13 @@
+# 1.0.3 — 双语展示、论文标签与自动安装 Skills
+
+**简体中文** | [English](CHANGELOG.en.md)
+
+- README 加入项目横幅、方形徽章、功能卡片、流程图与中英文入口，默认中文；提供英文使用、构建、隐私和源码说明。
+- 设置页增加持久化的简体中文 / English 切换，覆盖静态标签、无障碍说明、颜色名称、默认规则、状态与配置错误；保留已有用户内容。
+- 新增论文标签 get / prepare / apply 接口，PDF 自动解析到论文父条目；追加自动标签，保留原标签与类型，拒绝仍有新增项的过期快照，重复应用幂等。
+- 随附 `zotero-paper-annotator` 和 `zotero-literature-notes` 两个 skills 及英文入口。“配置 Codex”同时安装；升级会加入后续新 skill、更新未修改的托管副本，保留本地编辑并显示状态。
+- 补充标签、skill 安装、翻译覆盖和内置运行程序验证；保留同步修复与 Zotero 原生自动更新。
+
 # 1.0.2 — Zotero 自动更新与 MCP 配套升级
 
 - 接入 Zotero 原生更新机制，使用 GitHub 最新正式 Release 中的 updates.json，按 XPI SHA-256 校验下载。

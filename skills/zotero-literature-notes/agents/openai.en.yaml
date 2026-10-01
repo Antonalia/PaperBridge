@@ -1,0 +1,4 @@
+interface:
+  display_name: "Literature Notes · Zotero → Obsidian"
+  short_description: "Read source evidence, add annotations and expand collection-aware Obsidian notes"
+  default_prompt: "Use $zotero-literature-notes to read this paper, supplement missing Zotero annotations, import through PaperBridge into Obsidian, and explain its method, related work, experiments and conclusions."

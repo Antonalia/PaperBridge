@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zotero 论文自动批注"
+  short_description: "用 PaperBridge 精读论文，添加批注和主题标签并解释公式和举例"
+  default_prompt: "使用 $zotero-paper-annotator 为这篇论文添加 Zotero 批注和主题标签，解释重点和核心公式，并生成带计算示例的中文 Markdown。"

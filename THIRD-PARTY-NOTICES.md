@@ -1,4 +1,4 @@
-# Third-party notices — PaperBridge 1.0.2
+# Third-party notices — PaperBridge 1.0.3
 
 Project-authored code and resources: Copyright (C) 2026 PaperBridge contributors.
 Project license: AGPL-3.0-or-later; see LICENSE. Upstream copyrights and licenses remain with their respective authors.
@@ -48,7 +48,7 @@ Build-tool licenses do not override this project's license; the PyInstaller boot
 
 ## Corresponding source and build instructions
 
-Distribute paperbridge-1.0.2-source.zip and SHA256SUMS.txt beside paperbridge-1.0.2.xpi.
+Distribute paperbridge-1.0.3-source.zip and SHA256SUMS.txt beside paperbridge-1.0.3.xpi.
 See SOURCE-CODE.md, BUILD.md and third_party/source-manifest.json.
 Original license texts are in LICENSES/ and plugin/runtime/licenses/; full dependency sources retain their notices.
 

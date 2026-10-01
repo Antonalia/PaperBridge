@@ -43,7 +43,7 @@ windows=Path(os.environ['SystemRoot'])
 env['PATH']=os.pathsep.join([str(Path(sys.executable).parent),str(Path(sys.executable).parent/'DLLs'),str(windows/'System32'),str(windows)])
 args=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--onefile','--noupx','--name','codex-zotero-mcp',
       '--distpath',str(runtime),'--workpath',str(work/'pyinstaller'),'--specpath',str(work),'--paths',str(root/'tools'),
-      '--add-data',str(root/'tools/mcp-tools.json')+os.pathsep+'.','--add-data',str(licenses)+os.pathsep+'licenses','--collect-binaries','pymupdf']
+      '--add-data',str(root/'tools/mcp-tools.json')+os.pathsep+'.','--add-data',str(licenses)+os.pathsep+'licenses','--add-data',str(root/'skills')+os.pathsep+'skills','--collect-binaries','pymupdf']
 for module in ['numpy','pandas','matplotlib','PIL','cv2','scipy','torch','IPython','openpyxl','pytesseract','wx','tkinter','pytest','sympy','setuptools']:
     args+=['--exclude-module',module]
 args.append(str(root/'tools/portable_mcp.py'))

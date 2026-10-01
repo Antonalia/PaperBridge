@@ -1,7 +1,9 @@
-# 构建 1.0.2
+# 构建 1.0.3
 
-环境：Windows x64、CPython 3.12.14，PyMuPDF/MuPDF 1.28.2。插件与 MCP 均为 1.0.2。
-解压源码 ZIP，在 paperbridge-1.0.2 目录打开 PowerShell：
+**简体中文** | [English](BUILD.en.md)
+
+环境：Windows x64、CPython 3.12.14，PyMuPDF/MuPDF 1.28.2。插件与 MCP 均为 1.0.3。
+解压源码 ZIP，在 paperbridge-1.0.3 目录打开 PowerShell：
 
 ```powershell
 py -3.12 -m venv .venv
@@ -10,9 +12,14 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe tools/build_portable.py
 node tests/test_relations.mjs
 node tests/test_updates.mjs
+node tests/test_item_tags.mjs
+node tests/test_i18n.mjs
 .\.venv\Scripts\python.exe tests/test_updates.py
+.\.venv\Scripts\python.exe tests/test_item_tags.py
+.\.venv\Scripts\python.exe tests/test_skills.py
 .\.venv\Scripts\python.exe tests/test_release.py
 .\.venv\Scripts\python.exe tools/build.py
+.\.venv\Scripts\python.exe tests/test_updates.py --artifacts
 ```
 
 Python 应显示 3.12.14；使用其他版本会停止。输出在 dist/，包含 XPI、完整源码 ZIP、SHA256SUMS.txt 和 updates.json。

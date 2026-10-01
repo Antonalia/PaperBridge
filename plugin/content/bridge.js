@@ -76,7 +76,7 @@ var CodexZoteroBridge = {
         return null;
     },
     async start(root) {
-        for (const [key, value] of Object.entries({ enabled: true, writeEnabled: false, annotationRules: this.defaultAnnotationRules, receipts: "{}", obsidianLinksEnabled: true, obsidianAnnotationLinks: true, obsidianImageLinks: true, obsidianChartLinks: true, obsidianVaultPath: "", obsidianTopFolder: "文献笔记", obsidianFolderLayout: "collections" })) {
+        for (const [key, value] of Object.entries({ language: "zh", enabled: true, writeEnabled: false, annotationRules: this.defaultAnnotationRules, receipts: "{}", obsidianLinksEnabled: true, obsidianAnnotationLinks: true, obsidianImageLinks: true, obsidianChartLinks: true, obsidianVaultPath: "", obsidianTopFolder: "文献笔记", obsidianFolderLayout: "collections" })) {
             if (this.get(key) === undefined) this.set(key, value);
         }
         // Discover a single open Obsidian vault locally; no personal path in the release.
@@ -116,7 +116,7 @@ var CodexZoteroBridge = {
         Zotero.Server.Endpoints[this.path] = this.Endpoint;
         this.preferenceID = await Zotero.PreferencePanes.register({
             pluginID: "codex-pdf-bridge@local.personal", id: "codex-pdf-bridge-prefs",
-            label: "文献桥", image: root + "icons/icon-24.png", src: root + "content/preferences.xhtml", scripts: [root + "content/preferences.js"]
+            label: Zotero.PaperBridgeI18n ? Zotero.PaperBridgeI18n.t("文献桥") : "文献桥", image: root + "icons/icon-24.png", src: root + "content/preferences.xhtml", scripts: [root + "content/preferences.js"]
         });
         Zotero.debug("文献桥 · PaperBridge: local endpoint registered");
     },
@@ -128,7 +128,7 @@ var CodexZoteroBridge = {
     },
     assertEnabled(write = false) {
         if (!this.active || !this.get("enabled")) throw new Error("Bridge is disabled. Enable it in Zotero Settings > 文献桥 · PaperBridge.");
-        if (write && !this.get("writeEnabled")) throw new Error("Write tools are disabled. Enable native annotation writes in Zotero Settings > 文献桥 · PaperBridge.");
+        if (write && !this.get("writeEnabled")) throw new Error("Write tools are disabled. Enable annotation and paper tag writes in Zotero Settings > 文献桥 · PaperBridge.");
         if (write && this.metadataError) throw new Error("PaperBridge metadata repair needs attention: " + this.metadataError);
     },
     async handle(request) {
@@ -140,8 +140,8 @@ var CodexZoteroBridge = {
             const data = typeof request.data === "string" ? JSON.parse(request.data) : request.data;
             if (!data || typeof data !== "object" || JSON.stringify(data).length > 12000000) throw new Error("Invalid or oversized request");
             let result;
-            if (["apply_annotations", "update_annotations"].includes(data.action)) {
-                const job = this.pending.then(() => data.action === "update_annotations" ? this.updateAnnotations(data) : this.apply(data));
+            if (["apply_annotations", "update_annotations", "apply_item_tags"].includes(data.action)) {
+                const job = this.pending.then(() => data.action === "apply_item_tags" ? this.applyItemTags(data) : data.action === "update_annotations" ? this.updateAnnotations(data) : this.apply(data));
                 this.pending = job.catch(() => {});
                 result = await job;
             } else result = await this.dispatch(data);
@@ -153,6 +153,51 @@ var CodexZoteroBridge = {
         }
     },
     ref(item) { return "u-" + item.key; },
+    async paperItem(ref) {
+        if (typeof ref !== "string" || !/^u-[A-Z0-9]{8}$/.test(ref)) throw new Error("Use a returned personal-library item or PDF ID (u-XXXXXXXX)");
+        let item = await Zotero.Items.getByLibraryAndKeyAsync(Zotero.Libraries.userLibraryID, ref.slice(2));
+        if (!item || item.deleted || item.libraryID !== Zotero.Libraries.userLibraryID) throw new Error("Item does not exist in the personal library");
+        if (item.isPDFAttachment() && item.parentID) item = await Zotero.Items.getAsync(item.parentID);
+        if (!item || item.deleted || item.libraryID !== Zotero.Libraries.userLibraryID || !item.isRegularItem()) throw new Error("Paper tags require a regular parent item outside trash");
+        await item.loadDataType("tags");
+        await item.loadDataType("itemData");
+        return item;
+    },
+    tagState(item) {
+        return item.getTags().map(value => ({ tag: value.tag, type: value.type || 0 })).sort((a, b) => a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : a.type - b.type);
+    },
+    normalizeItemTags(tags) {
+        if (!Array.isArray(tags) || !tags.length || tags.length > 50 || tags.some(tag => typeof tag !== "string" || !tag.trim() || tag.length > 200 || /[\u0000-\u001f\u007f]/.test(tag))) throw new Error("Use 1–50 nonempty tags, each at most 200 characters without control characters");
+        return [...new Set(tags.map(tag => tag.trim().normalize("NFC")))];
+    },
+    async itemTags(ref) {
+        const item = await this.paperItem(ref);
+        return { item_id: this.ref(item), title: item.getField("title"), tags: this.tagState(item) };
+    },
+    async applyItemTags(data) {
+        this.assertEnabled(true);
+        const item = await this.paperItem(data.item_id);
+        if (!Zotero.Libraries.get(item.libraryID).editable) throw new Error("Library is read-only");
+        const requested = this.normalizeItemTags(data.tags);
+        if (!Array.isArray(data.expected_tags)) throw new Error("Missing prepared tag snapshot");
+        let added = [];
+        try {
+            await Zotero.DB.executeTransaction(async () => {
+                this.assertEnabled(true);
+                const current = this.tagState(item);
+                const names = new Set(current.map(value => value.tag.normalize("NFC")));
+                added = requested.filter(tag => !names.has(tag));
+                if (!added.length) return; // Safe, idempotent retry; never change manual tag types.
+                if (JSON.stringify(current) !== JSON.stringify(data.expected_tags)) throw new Error("Paper tags changed; prepare a new tag plan");
+                for (const tag of added) item.addTag(tag, 1);
+                await item.save();
+            });
+        } catch (error) {
+            await item.reload(["tags"], true);
+            throw error;
+        }
+        return { item_id: this.ref(item), added, already_present: requested.filter(tag => !added.includes(tag)), tags: this.tagState(item) };
+    },
     async attachment(ref) {
         if (typeof ref !== "string" || !/^u-[A-Z0-9]{8}$/.test(ref)) throw new Error("Use a personal-library attachment ID returned by this bridge (u-XXXXXXXX).");
         const item = await Zotero.Items.getByLibraryAndKeyAsync(Zotero.Libraries.userLibraryID, ref.slice(2));
@@ -180,8 +225,9 @@ var CodexZoteroBridge = {
         return value;
     },
     async dispatch(data) {
+        if (data.action === "item_tags") return this.itemTags(data.item_id);
         if (data.action === "obsidian_snapshot") return this.obsidianSnapshot(data.attachment_id);
-        if (data.action === "status") return { version: "1.0.2", ...this.annotationRules(), annotation_updates: true, annotation_geometry: "compact-font-disjoint-v1", zotero_version: Zotero.version, library: "personal", write_enabled: !!this.get("writeEnabled") && !this.metadataError, metadata_error: this.metadataError, relation_migration: this.relationMigration || null, account_required: false, default_colors: this.colorDefaults(), color_palette: this.colors, obsidian_links: this.obsidianLinks() };
+        if (data.action === "status") return { version: "1.0.3", ...this.annotationRules(), annotation_updates: true, item_tags: true, item_tag_mode: "add-only-automatic", annotation_geometry: "compact-font-disjoint-v1", zotero_version: Zotero.version, library: "personal", write_enabled: !!this.get("writeEnabled") && !this.metadataError, metadata_error: this.metadataError, relation_migration: this.relationMigration || null, account_required: false, default_colors: this.colorDefaults(), color_palette: this.colors, obsidian_links: this.obsidianLinks() };
         if (data.action === "obsidian_link") {
             const { item } = await this.attachment(data.attachment_id);
             if (typeof data.annotation_id !== "string" || !/^u-[A-Z0-9]{8}$/.test(data.annotation_id)) throw new Error("Use an annotation ID returned by this bridge");

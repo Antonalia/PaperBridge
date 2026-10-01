@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zotero Paper Annotator"
+  short_description: "Annotate papers, add topic tags and explain formulas with worked examples"
+  default_prompt: "Use $zotero-paper-annotator to read this paper, add native Zotero annotations and topic tags, explain its key formulas, and produce Markdown with worked examples."

@@ -1,9 +1,9 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "platform": "windows-x64",
   "filename": "codex-zotero-mcp.exe",
-  "size_bytes": 28231482,
-  "sha256": "309abc979a6e952f60040e7914357d4bcad6fd56c13771d420d58ee12d6158e0",
+  "size_bytes": 28295901,
+  "sha256": "0f6dcad8077a4eea02d15fe7dfe7587eb35544bc2dd68b462ff2b6cfbda9c42b",
   "python_version": "3.12.14",
   "pymupdf_version": "1.28.2",
   "mupdf_version": "1.28.2",

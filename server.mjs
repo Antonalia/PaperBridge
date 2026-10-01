@@ -18,6 +18,9 @@ const str = { type: 'string', minLength: 1 };
 const attachment = { ...str, description: 'Personal-library PDF attachment ID returned by search or selected_items, e.g. u-ABCD2345.' };
 const pageProperties = { attachment_id: attachment, start_page: { type: 'integer', minimum: 1, default: 1 }, end_page: { type: 'integer', minimum: 1, description: 'Read at most 20 physical pages per call; defaults to start_page + 9.' } };
 export const tools = [
+    { name: 'zotero_get_item_tags', description: 'Read paper-level tags. A returned PDF ID resolves to its regular parent item; standalone PDFs are rejected. Does not require a local PDF file.', inputSchema: obj({ item_id: str }, ['item_id']) },
+    { name: 'zotero_prepare_item_tags', description: 'Prepare additive paper tags after reading the paper. Supply concise semantic tags; existing tags and their manual/automatic types are preserved. No writes. Review additions, then apply within user authorization.', inputSchema: obj({ item_id: str, tags: { type: 'array', minItems: 1, maxItems: 50, items: { ...str, maxLength: 200 } } }, ['item_id', 'tags']) },
+    { name: 'zotero_apply_item_tags', description: 'Apply a prepared paper tag plan as Zotero automatic tags (type 1). Requires enabled writes. Preserves existing tags; rejects changed snapshots when additions remain. Reapplying is idempotent.', inputSchema: obj({ plan_id: str }, ['plan_id']), annotations: { ...readHints, readOnlyHint: false } },
     { name: 'zotero_prepare_obsidian_import', description: 'Prepare an Obsidian Markdown import of native Zotero annotations, comments and cached images using the vault, top folder, collection hierarchy and per-kind link settings in Zotero. Does not write files. Select collection_id if the paper has multiple collections, or target_note for an existing vault-relative Markdown file. Omit annotation_ids to import all annotations. Older image annotations may need content_kinds overrides to distinguish charts. Returns a reviewable path and plan ID; requires plugin 0.1.10+. Exports each annotation as a Page callout with a continuous source paragraph and a separate comment paragraph. PDF line-wrap hyphens are resolved conservatively against the paper vocabulary; Zotero source annotations remain unchanged.', inputSchema: obj({ attachment_id: attachment, collection_id: str, target_note: { ...str, description: 'Optional vault-relative .md path; imported blocks update while manual content remains.' }, annotation_ids: { type: 'array', minItems: 1, maxItems: 500, items: str }, include_comments: { type: 'boolean' }, omit_comments_for: { type: 'array', maxItems: 500, items: str }, content_kinds: { type: 'array', maxItems: 500, items: obj({ annotation_id: str, kind: { type: 'string', enum: ['image', 'chart'] } }, ['annotation_id', 'kind']) } }, ['attachment_id']) },
     { name: 'zotero_apply_obsidian_import', description: 'Apply a prepared Obsidian import after the user authorizes the export. Writes only the configured vault, checks for changed notes/settings, backs up existing notes, preserves manual content and avoids duplicate annotation blocks. Reapplying the same plan is idempotent. Does not edit Zotero annotations.', inputSchema: obj({ plan_id: str }, ['plan_id']), annotations: { ...readHints, readOnlyHint: false } },
     { name: 'zotero_render_pdf_page', description: 'Render a canonical unrotated PDF page for visual inspection before selecting an image region. Returns PNG and an opaque render ID; crop coordinates are in this image pixel space.', inputSchema: obj({ attachment_id: attachment, page: { type: 'integer', minimum: 1 } }, ['attachment_id', 'page']) },
@@ -63,6 +66,7 @@ export class ZoteroMcp {
         this.plans = new Map();
         this.renders = new Map();
         this.obsidianPlans = new Map();
+        this.tagPlans = new Map();
         this.expiresAfter = 60 * 60 * 1000;
     }
     async settings() {
@@ -102,7 +106,8 @@ export class ZoteroMcp {
     }
     cleanup() {
         const cutoff = Date.now() - this.expiresAfter;
-        for (const map of [this.locators, this.plans, this.renders, this.obsidianPlans]) for (const [key, value] of map) if (value.created < cutoff) map.delete(key);
+        for (const map of [this.locators, this.plans, this.renders, this.obsidianPlans, this.tagPlans]) for (const [key, value] of map) if (value.created < cutoff) map.delete(key);
+        while (this.tagPlans.size > 100) this.tagPlans.delete(this.tagPlans.keys().next().value);
         while (this.locators.size > 12000) this.locators.delete(this.locators.keys().next().value);
         while (this.plans.size > 100) this.plans.delete(this.plans.keys().next().value);
         while (this.renders.size > 50) this.renders.delete(this.renders.keys().next().value);
@@ -170,6 +175,23 @@ export class ZoteroMcp {
         if (!tool) throw new Error(`Unknown tool: ${name}`);
         validate(args, tool.inputSchema);
         this.cleanup();
+        if (name === 'zotero_get_item_tags') return this.bridge('item_tags', args);
+        if (name === 'zotero_prepare_item_tags') {
+            if (args.tags.some(tag => /[\u0000-\u001f\u007f]/.test(tag))) throw new Error('Invalid paper tag');
+            const tags = [...new Set(args.tags.map(tag => tag.trim().normalize('NFC')))];
+            if (tags.some(tag => !tag || /[\u0000-\u001f\u007f]/.test(tag))) throw new Error('Invalid paper tag');
+            const snapshot = await this.bridge('item_tags', { item_id: args.item_id });
+            const existing = new Set(snapshot.tags.map(value => value.tag.normalize('NFC')));
+            const planID = randomBytes(16).toString('hex');
+            this.tagPlans.set(planID, { item_id: snapshot.item_id, expected_tags: snapshot.tags, tags, created: Date.now() });
+            return { ...snapshot, plan_id: planID, additions: tags.filter(tag => !existing.has(tag)), already_present: tags.filter(tag => existing.has(tag)), expires_in_minutes: 60 };
+        }
+        if (name === 'zotero_apply_item_tags') {
+            const plan = this.tagPlans.get(args.plan_id);
+            if (!plan) throw new Error('Unknown/expired tag plan; prepare again');
+            const { created, ...payload } = plan;
+            return this.bridge('apply_item_tags', payload);
+        }
         if (name === 'zotero_prepare_obsidian_import') {
             const snapshot = await this.obsidianSnapshot(args.attachment_id);
             const { _obsidian_plan, ...preview } = await this.region({ operation: 'prepare', snapshot, args }, 'obsidian_import.py');
@@ -273,7 +295,7 @@ export async function serve() {
         (async () => {
             try {
                 let result;
-                if (request.method === 'initialize') result = { protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18'].includes(request.params?.protocolVersion) ? request.params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'codex-zotero-local', version: '1.0.2' }, instructions: 'Use only returned attachment IDs and locator IDs. Read source passages before annotating. Prepare annotations for review, then apply when authorized by the user. Never guess PDF coordinates. Keep Zotero open. For Obsidian imports use zotero_prepare_obsidian_import and zotero_apply_obsidian_import to honor vault, collection and link settings and preserve manual content. Apply after user authorization. For manual exports use zotero_get_obsidian_link; never bypass disabled link settings.' + '\n' + rulesInstructions(await app.metadataRules()) };
+                if (request.method === 'initialize') result = { protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18'].includes(request.params?.protocolVersion) ? request.params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'codex-zotero-local', version: '1.0.3' }, instructions: 'Use only returned attachment IDs and locator IDs. Read source passages before annotating. Prepare annotations for review, then apply when authorized by the user. Never guess PDF coordinates. Keep Zotero open. For Obsidian imports use zotero_prepare_obsidian_import and zotero_apply_obsidian_import to honor vault, collection and link settings and preserve manual content. Apply after user authorization. For manual exports use zotero_get_obsidian_link; never bypass disabled link settings.' + '\n' + rulesInstructions(await app.metadataRules()) };
                 else if (request.method === 'ping') result = {};
                 else if (request.method === 'tools/list') result = { tools: toolsWithRules(tools, await app.metadataRules()) };
                 else if (request.method === 'tools/call') {

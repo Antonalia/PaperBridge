@@ -14,12 +14,13 @@ import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, ProxyHandler, HTTPRedirectHandler, build_opener
 
 from annotation_rules import rules_from_status, rules_instructions, tools_with_rules
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 ASSETS = Path(__file__).resolve().parent
 HOME = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else ASSETS.parent
 DEFAULTS = dict(annotation='yellow', important='red', image='purple', chart='blue')
@@ -69,6 +70,7 @@ class ZoteroMcp:
         self.config_path = config_path
         self.locators, self.plans, self.renders = {}, {}, {}
         self.obsidian_plans = {}
+        self.tag_plans = {}
         self.http = build_opener(ProxyHandler({}), LocalOnlyRedirects())
 
     def settings(self):
@@ -116,7 +118,7 @@ class ZoteroMcp:
         except Exception: return rules_from_status()
 
     def cleanup(self):
-        for store, limit in ((self.locators, 12000), (self.plans, 100), (self.renders, 50), (self.obsidian_plans, 50)):
+        for store, limit in ((self.locators, 12000), (self.plans, 100), (self.renders, 50), (self.obsidian_plans, 50), (self.tag_plans, 100)):
             for key in list(store):
                 if store[key]['created'] < time.time() - 3600:
                     del store[key]
@@ -169,6 +171,24 @@ class ZoteroMcp:
             raise ValueError(f'Unknown tool: {name}')
         validate(args, tool['inputSchema'])
         self.cleanup()
+        if name == 'zotero_get_item_tags':
+            return self.bridge('item_tags', **args)
+        if name == 'zotero_prepare_item_tags':
+            if any(re.search(r'[\x00-\x1f\x7f]', tag) for tag in args['tags']):
+                raise ValueError('Invalid paper tag')
+            tags = list(dict.fromkeys(unicodedata.normalize('NFC', tag.strip()) for tag in args['tags']))
+            if any(not tag or re.search(r'[\x00-\x1f\x7f]', tag) for tag in tags):
+                raise ValueError('Invalid paper tag')
+            snapshot = self.bridge('item_tags', item_id=args['item_id'])
+            existing = {unicodedata.normalize('NFC', value['tag']) for value in snapshot['tags']}
+            plan_id = secrets.token_hex(16)
+            self.tag_plans[plan_id] = dict(item_id=snapshot['item_id'], expected_tags=snapshot['tags'], tags=tags, created=time.time())
+            return dict(snapshot, plan_id=plan_id, additions=[tag for tag in tags if tag not in existing], already_present=[tag for tag in tags if tag in existing], expires_in_minutes=60)
+        if name == 'zotero_apply_item_tags':
+            plan = self.tag_plans.get(args['plan_id'])
+            if plan is None:
+                raise ValueError('Unknown/expired tag plan; prepare again')
+            return self.bridge('apply_item_tags', **{key: value for key, value in plan.items() if key != 'created'})
         if name == 'zotero_prepare_obsidian_import':
             from obsidian_import import prepare
             snapshot = self.obsidian_snapshot(args['attachment_id'])
@@ -329,7 +349,14 @@ def configure(config_path, upgrade_existing=False):
     write_atomic(config_path, encode(dict(token=token, port=port)).encode(), private=True)
     if updated != original:
         write_atomic(config, updated, original=original, private=True)
-    return dict(ok=True, version=VERSION, config_path=str(config), backup_path=str(backup) if backup else None, message='Codex configured. Restart Codex and keep Zotero open.')
+    from skill_install import install_skills
+    try:
+        source = (ASSETS / 'skills') if getattr(sys, 'frozen', False) else ASSETS.parent / 'skills'
+        skill_results = install_skills(source, codex_home, request.get('language', 'zh'))
+        skill_error = None
+    except Exception as error:
+        skill_results, skill_error = [], str(error)
+    return dict(ok=True, version=VERSION, config_path=str(config), backup_path=str(backup) if backup else None, skills=skill_results, skill_error=skill_error, message='Codex configured. Restart Codex and keep Zotero open.')
 
 
 def upgrade_skip_reason(entry, config_path):

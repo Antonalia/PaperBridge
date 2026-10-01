@@ -126,7 +126,13 @@
         rulesChanged = false;
         renderRules();
         const configured = get("configuredVersion");
-        if (configured) document.getElementById("codex-bridge-setup-status").textContent = "已配置版本 " + configured + "。升级后可再次点击配置；首次配置完成后请重启 Codex。";
+        const status = document.getElementById("codex-bridge-setup-status");
+        let upgrade;
+        try { upgrade = JSON.parse(get("upgradeStatus") || "null"); } catch (_) { /* Ignore obsolete status. */ }
+        if (configured) status.textContent = "已配置版本 " + configured + "。新版会自动升级已启用的连接；配置变更后请重启 Codex。";
+        if (upgrade?.state === "failed") status.textContent = upgrade.message;
+        if (upgrade?.state === "skipped") status.textContent = "Codex 连接已移除、禁用或被手动调整，未自动覆盖。需要连接时请点击配置。";
+        if (upgrade?.state === "updated" && upgrade.automatic) status.textContent = "已自动升级配套程序至 " + upgrade.version + "，请完全退出并重新打开 Codex。";
     }
     // Scripts run before Zotero inserts the pane. The load event does not bubble.
     document.addEventListener("load", event => {

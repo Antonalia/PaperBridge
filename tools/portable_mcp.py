@@ -19,7 +19,7 @@ from urllib.request import Request, ProxyHandler, HTTPRedirectHandler, build_ope
 
 from annotation_rules import rules_from_status, rules_instructions, tools_with_rules
 
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 ASSETS = Path(__file__).resolve().parent
 HOME = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else ASSETS.parent
 DEFAULTS = dict(annotation='yellow', important='red', image='purple', chart='blue')
@@ -284,7 +284,7 @@ def write_atomic(path, data, original=None, private=False):
         temp.unlink(missing_ok=True)
 
 
-def configure(config_path):
+def configure(config_path, upgrade_existing=False):
     import tomlkit
     if os.name != 'nt' or not getattr(sys, 'frozen', False):
         raise ValueError('The one-click installer requires the packaged Windows executable')
@@ -303,13 +303,19 @@ def configure(config_path):
     if not isinstance(servers, dict):
         raise ValueError('Invalid mcp_servers configuration; configuration was not replaced')
     old = servers.get('zotero_local')
+    if upgrade_existing:
+        # Do not recreate removed entries, enable disabled ones, or overwrite a
+        # user's custom command/arguments. Only advance our versioned executable.
+        reason = upgrade_skip_reason(old, config_path)
+        if reason:
+            return dict(ok=True, skipped=True, reason=reason, version=VERSION)
     if old is not None:
         command = str(old.get('command', '')).replace('\\', '/').lower()
         args = [str(value).replace('\\', '/').lower() for value in old.get('args', [])]
         owned = command.endswith('/codex-zotero-mcp.exe') or command == 'codex-zotero-mcp.exe' or any(value.endswith('/zotero-codex-bridge/server.mjs') for value in args)
         if not owned:
             raise ValueError('A different MCP already uses the name zotero_local; rename it before setup')
-    table = tomlkit.table()
+    table = old if upgrade_existing else tomlkit.table()
     table['command'] = str(Path(sys.executable).resolve())
     table['args'] = ['--config', str(config_path.resolve())]
     servers['zotero_local'] = table
@@ -324,6 +330,28 @@ def configure(config_path):
     if updated != original:
         write_atomic(config, updated, original=original, private=True)
     return dict(ok=True, version=VERSION, config_path=str(config), backup_path=str(backup) if backup else None, message='Codex configured. Restart Codex and keep Zotero open.')
+
+
+def upgrade_skip_reason(entry, config_path):
+    if entry is None:
+        return 'removed'
+    if not isinstance(entry, dict):
+        return 'customized'
+    if entry.get('enabled') is False:
+        return 'disabled'
+    command, arguments = entry.get('command'), entry.get('args')
+    if not isinstance(command, str) or not isinstance(arguments, list) or len(arguments) != 2 or arguments[0] != '--config' or not isinstance(arguments[1], str):
+        return 'customized'
+    executable, linked_config = Path(command), Path(arguments[1])
+    if not executable.is_absolute() or not linked_config.is_absolute():
+        return 'customized'
+    executable, linked_config = executable.resolve(), linked_config.resolve()
+    directory = config_path.resolve().parent
+    if (linked_config != config_path.resolve() or executable.parent.parent != directory
+            or executable.name.lower() != 'codex-zotero-mcp.exe'
+            or not re.fullmatch(r'\d+\.\d+\.\d+', executable.parent.name)):
+        return 'customized'
+    return None
 
 
 def serve(config_path):
@@ -383,6 +411,7 @@ def main():
     parser = argparse.ArgumentParser(description='Codex Zotero standalone MCP')
     parser.add_argument('--config', type=Path, default=HOME / 'bridge-config.json')
     parser.add_argument('--configure', action='store_true')
+    parser.add_argument('--upgrade-existing', action='store_true')
     parser.add_argument('--worker', choices=('extract', 'region'))
     args = parser.parse_args()
     if args.worker:
@@ -398,9 +427,9 @@ def main():
         except Exception as error:
             sys.stdout.buffer.write(encode(dict(error=str(error))).encode())
             return 1
-    elif args.configure:
+    elif args.configure or args.upgrade_existing:
         try:
-            output = configure(args.config)
+            output = configure(args.config, upgrade_existing=args.upgrade_existing)
         except Exception as error:
             output = dict(ok=False, error=str(error))
         sys.stdout.buffer.write(encode(output).encode())

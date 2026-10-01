@@ -48,7 +48,20 @@ var CodexBridgeInstaller = {
         }
         return { executable, config: PathUtils.join(Zotero.Profile.dir, "codex-pdf-bridge", "bridge-config.json") };
     },
-    async configure() {
+    async upgradeConfigured(version) {
+        const prefix = "extensions.zotero.codexPdfBridge.";
+        const configured = Zotero.Prefs.get(prefix + "configuredVersion", true);
+        if (!configured || configured === version) return;
+        try {
+            await this.configure({ upgradeExisting: true });
+        } catch (error) {
+            // A companion upgrade must not prevent Zotero or the bridge from starting.
+            Zotero.Prefs.set(prefix + "upgradeStatus", JSON.stringify({ state: "failed", version,
+                message: "配套程序升级未完成，请在文献桥设置中重试配置。" }), true);
+            Zotero.logError(error);
+        }
+    },
+    async configure({ upgradeExisting = false } = {}) {
         if (this.busy) throw new Error("正在配置，请稍候。");
         this.busy = true;
         try {
@@ -58,7 +71,8 @@ var CodexBridgeInstaller = {
             const token = Zotero.Prefs.get(prefix + "token", true);
             const port = Zotero.Prefs.get("httpServer.port") || 23119;
             // Send secrets over stdin; never put them in process arguments or logs.
-            const process = await Subprocess.call({ command: paths.executable, arguments: ["--configure", "--config", paths.config], stderr: "pipe" });
+            const process = await Subprocess.call({ command: paths.executable,
+                arguments: [upgradeExisting ? "--upgrade-existing" : "--configure", "--config", paths.config], stderr: "pipe" });
             await process.stdin.write(JSON.stringify({ token, port }));
             process.stdin.close();
             let output = "", chunk;
@@ -72,7 +86,9 @@ var CodexBridgeInstaller = {
             let result;
             try { result = JSON.parse(output); } catch (_) { throw new Error("配置程序未能启动或未返回结果。请确认已安装 Microsoft Visual C++ x64 运行库，并检查 Windows 是否阻止了该程序。"); }
             if (exitCode || !result.ok) throw new Error(result.error || "Codex 配置失败。");
-            Zotero.Prefs.set(prefix + "configuredVersion", result.version, true);
+            if (!result.skipped) Zotero.Prefs.set(prefix + "configuredVersion", result.version, true);
+            Zotero.Prefs.set(prefix + "upgradeStatus", JSON.stringify({ state: result.skipped ? "skipped" : "updated",
+                version: result.version, automatic: upgradeExisting, reason: result.reason || null }), true);
             return result;
         } finally { this.busy = false; }
     }

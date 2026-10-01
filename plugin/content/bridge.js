@@ -181,7 +181,7 @@ var CodexZoteroBridge = {
     },
     async dispatch(data) {
         if (data.action === "obsidian_snapshot") return this.obsidianSnapshot(data.attachment_id);
-        if (data.action === "status") return { version: "1.0.1", ...this.annotationRules(), annotation_updates: true, annotation_geometry: "compact-font-disjoint-v1", zotero_version: Zotero.version, library: "personal", write_enabled: !!this.get("writeEnabled") && !this.metadataError, metadata_error: this.metadataError, relation_migration: this.relationMigration || null, account_required: false, default_colors: this.colorDefaults(), color_palette: this.colors, obsidian_links: this.obsidianLinks() };
+        if (data.action === "status") return { version: "1.0.2", ...this.annotationRules(), annotation_updates: true, annotation_geometry: "compact-font-disjoint-v1", zotero_version: Zotero.version, library: "personal", write_enabled: !!this.get("writeEnabled") && !this.metadataError, metadata_error: this.metadataError, relation_migration: this.relationMigration || null, account_required: false, default_colors: this.colorDefaults(), color_palette: this.colors, obsidian_links: this.obsidianLinks() };
         if (data.action === "obsidian_link") {
             const { item } = await this.attachment(data.attachment_id);
             if (typeof data.annotation_id !== "string" || !/^u-[A-Z0-9]{8}$/.test(data.annotation_id)) throw new Error("Use an annotation ID returned by this bridge");

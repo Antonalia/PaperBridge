@@ -1,7 +1,7 @@
-# 构建 1.0.1
+# 构建 1.0.2
 
-环境：Windows x64、CPython 3.12.14，PyMuPDF/MuPDF 1.28.2。插件与 MCP 均为 1.0.1。
-解压源码 ZIP，在 paperbridge-1.0.1 目录打开 PowerShell：
+环境：Windows x64、CPython 3.12.14，PyMuPDF/MuPDF 1.28.2。插件与 MCP 均为 1.0.2。
+解压源码 ZIP，在 paperbridge-1.0.2 目录打开 PowerShell：
 
 ```powershell
 py -3.12 -m venv .venv
@@ -9,11 +9,13 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-build.txt
 .\.venv\Scripts\python.exe tools/build_portable.py
 node tests/test_relations.mjs
+node tests/test_updates.mjs
+.\.venv\Scripts\python.exe tests/test_updates.py
 .\.venv\Scripts\python.exe tests/test_release.py
 .\.venv\Scripts\python.exe tools/build.py
 ```
 
-Python 应显示 3.12.14；使用其他版本会停止。输出在 dist/，包含 XPI、完整源码 ZIP 和 SHA256SUMS.txt。
+Python 应显示 3.12.14；使用其他版本会停止。输出在 dist/，包含 XPI、完整源码 ZIP、SHA256SUMS.txt 和 updates.json。
 打包检查依赖源归档、版本和程序哈希。构建不连接个人 Zotero，也不改写 Codex 配置。
 未承诺字节级可复现，工具链、时间戳等可能影响最终文件哈希。
 
@@ -25,6 +27,19 @@ MuPDF 源码包括 thirdparty 目录；从依赖源码重建 PyMuPDF，需阅读
 CPython 源树 PCbuild/ 包含 Windows 构建及外部依赖获取脚本。
 Node MCP 入口 server.mjs 只使用 Node.js 内置模块，不需 npm 依赖。
 标注迁移与失败重试测试使用 Node.js 20 或更新版本；测试使用模拟库，不接触个人 Zotero。
+
+## 发布与自动更新源
+
+1. 递增 plugin/manifest.json、package.json、MCP 和 Bridge 的版本，重新构建内置程序并运行测试。
+2. 创建对应的 v版本 标签。在同一个 GitHub Release 草稿中上传 dist/ 的四个文件：XPI、完整源码 ZIP、SHA256SUMS.txt、updates.json。
+3. 等全部上传完成再发布正式版本，设为 Latest；不要让预发布版本或尚未上传完附件的草稿成为更新源。
+4. 校验 updates.json 中的版本、兼容范围、固定版本 XPI 下载链接和哈希与实际附件一致。
+5. 用户从 https://github.com/Antonalia/PaperBridge/releases/latest/download/updates.json 读取清单。
+   更新清单由 tools/build.py 从最终 XPI 自动生成，不要手工填哈希，也不要构建后修改 XPI。
+   GitHub 仓库名或更新清单的固定地址不应随意变更，否则已安装版本不能发现新地址。
+
+发布自检使用：`.\.venv\Scripts\python.exe tests/test_updates.py --artifacts`。
+在线更新清单不放进 XPI，避免它的 XPI 哈希与自身形成循环依赖；生成逻辑随源码发行。
 
 ## Python 的外部组件与系统运行库
 

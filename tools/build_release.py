@@ -3,10 +3,12 @@
 """Package matching binaries and complete corresponding source."""
 from pathlib import Path
 import argparse, hashlib, json, zipfile
+from update_manifest import make_update_manifest
 root=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=root/'dist')
 output=parser.parse_args().output.resolve();output.mkdir(parents=True,exist_ok=True)
-version=json.loads((root/'plugin/manifest.json').read_text(encoding='utf-8'))['version']
+manifest=json.loads((root/'plugin/manifest.json').read_text(encoding='utf-8'))
+version=manifest['version']
 runtime=json.loads((root/'plugin/runtime/manifest.json').read_text(encoding='utf-8'))
 assert runtime['version']==version
 assert hashlib.sha256((root/'plugin/runtime'/runtime['filename']).read_bytes()).hexdigest()==runtime['sha256']
@@ -32,9 +34,12 @@ with zipfile.ZipFile(xpi,'w',zipfile.ZIP_DEFLATED) as z:
 source_zip=output/f'paperbridge-{version}-source.zip'
 with zipfile.ZipFile(source_zip,'w',zipfile.ZIP_DEFLATED) as z:
     for path in files:z.write(path,f'paperbridge-{version}/'+path.relative_to(root).as_posix())
+feed=output/'updates.json'
+feed.write_bytes((json.dumps(make_update_manifest(manifest,xpi.name,hashlib.sha256(xpi.read_bytes()).hexdigest()),indent=2)+'\n').encode())
 checksums=[]
 for artifact in [xpi,source_zip]:
     with zipfile.ZipFile(artifact) as z:assert z.testzip() is None
     checksums.append(hashlib.sha256(artifact.read_bytes()).hexdigest()+'  '+artifact.name)
+checksums.append(hashlib.sha256(feed.read_bytes()).hexdigest()+'  '+feed.name)
 (output/'SHA256SUMS.txt').write_bytes(('\n'.join(checksums)+'\n').encode())
 print(json.dumps({'version':version,'xpi_bytes':xpi.stat().st_size,'source_bytes':source_zip.stat().st_size}))

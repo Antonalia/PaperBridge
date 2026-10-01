@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/paperbridge.svg" alt="文献桥 PaperBridge — Zotero、Codex 与 Obsidian" width="800" />
+  <img src="plugin/icons/icon-128.png" alt="文献桥 PaperBridge 图标" width="128" height="128" />
   <h1>文献桥 · PaperBridge</h1>
   <p>读懂论文，留下解释，连起知识。</p>
   <p>
@@ -23,15 +23,6 @@
 | 阅读本地 PDF、核对核心公式，用具体数字解释方法。 | 创建原生高亮、注释与图像框选；为论文父条目追加主题标签。 |
 | **🗂️ 笔记与知识连接** | **⚡ 配置与升级** |
 | 保留来源、评论与图片，按 Zotero 分类整理到 Obsidian。 | 内置 MCP 配套程序，自动安装随附 skills，后续版本可加入新 skill。 |
-
-```mermaid
-flowchart LR
-    A[Zotero · 论文与 PDF] --> B[PaperBridge · 本地来源访问]
-    B --> C[Codex · 精读与解释]
-    C --> D[原生批注与论文标签]
-    D --> E[Obsidian · 分类目录与文献笔记]
-    C -. 准备方案与回读验证 .-> D
-```
 
 ## 从下载到第一篇笔记
 

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/paperbridge.svg" alt="PaperBridge — Zotero, Codex and Obsidian" width="800" />
+  <img src="plugin/icons/icon-128.png" alt="PaperBridge icon" width="128" height="128" />
   <h1>PaperBridge</h1>
   <p>Read papers. Understand the details. Keep the evidence.</p>
   <p>
@@ -20,15 +20,6 @@ PaperBridge connects your local Zotero personal library to Codex for source-base
 | Read local PDFs, verify formulas, and explain mechanisms with worked examples. | Create native highlights, notes and image regions; add paper-level topic tags. |
 | **🗂️ Keep notes in context** | **⚡ Set up once** |
 | Import comments and cached images into Obsidian, following Zotero collections and link preferences. | Configure the bundled MCP companion and install skills together. Future updates add new bundled skills. |
-
-```mermaid
-flowchart LR
-    A[Zotero · paper + PDF] --> B[PaperBridge · local source access]
-    B --> C[Codex · close reading + explanations]
-    C --> D[Native annotations + paper tags]
-    D --> E[Obsidian · collection folders + literature notes]
-    C -. prepared plan + verification .-> D
-```
 
 ## Get started
 
